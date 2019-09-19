@@ -1,18 +1,28 @@
 {
   "name": "github-sigtag",
   "version": "1.0.0",
-  "main": "main.js",
   "repository": "https://github.com/yamatatsu/github-sigtag.git",
   "author": "yamatatsu <the.kinnikuman@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start": "electron ."
+    "build:main": "tsc ./main/main.ts -w --outDir dist/",
+    "build:renderer": "parcel ./renderer/renderer.tsx",
+    "build": "npm-run-all -lp build:main build:renderer",
+    "start": "electron dist/main.js"
   },
   "dependencies": {
-    "@octokit/rest": "^16.29.0"
+    "@octokit/rest": "^16.29.0",
+    "react": "^16.9.0",
+    "react-dom": "^16.9.0"
   },
   "devDependencies": {
+    "@types/node": "^12.7.5",
+    "@types/react": "^16.9.2",
+    "@types/react-dom": "^16.9.0",
     "electron": "^6.0.10",
-    "prettier": "^1.18.2"
+    "npm-run-all": "^4.1.5",
+    "parcel": "^1.12.3",
+    "prettier": "^1.18.2",
+    "typescript": "^3.6.3"
   }
 }

@@ -1,8 +1,8 @@
-const { app, BrowserWindow } = require("electron")
+import { app, BrowserWindow } from "electron"
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win
+let win: any
 
 function createWindow() {
   // Create the browser window.
@@ -15,7 +15,7 @@ function createWindow() {
   })
 
   // and load the index.html of the app.
-  win.loadFile("index.html")
+  win.loadFile("../index.html")
 
   // Open the DevTools.
   win.webContents.openDevTools()
