@@ -1,55 +1,110 @@
 import { app, BrowserWindow } from "electron"
+import fetch from "node-fetch"
 
-// Keep a global reference of the window object, if you don't, the window will
-// be closed automatically when the JavaScript object is garbage collected.
-let win: any
+let mainWindow: BrowserWindow | null
 
-function createWindow() {
-  // Create the browser window.
-  win = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      nodeIntegration: true,
-    },
-  })
+app.on("ready", createMainWindow)
 
-  // and load the index.html of the app.
-  win.loadFile("../index.html")
-
-  // Open the DevTools.
-  win.webContents.openDevTools()
-
-  // Emitted when the window is closed.
-  win.on("closed", () => {
-    // Dereference the window object, usually you would store windows
-    // in an array if your app supports multi windows, this is the time
-    // when you should delete the corresponding element.
-    win = null
-  })
-}
-
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on("ready", createWindow)
-
-// Quit when all windows are closed.
 app.on("window-all-closed", () => {
-  // On macOS it is common for applications and their menu bar
-  // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== "darwin") {
     app.quit()
   }
 })
 
 app.on("activate", () => {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (win === null) {
-    createWindow()
+  if (mainWindow === null) {
+    createMainWindow()
   }
 })
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      nodeIntegration: true,
+    },
+  })
+  mainWindow.on("closed", () => {
+    mainWindow = null
+  })
+  mainWindow.loadFile("../index.html")
+  mainWindow.webContents.openDevTools()
+}
+
+function githubAuthorization() {
+  const clientId = process.env.CLIENT_ID
+  const clientSecret = process.env.CLIENT_SECRET
+  if (!clientId) throw new Error(`No process.env.CLIENT_ID!`)
+  if (!clientSecret) throw new Error(`No process.env.CLIENT_SECRET!`)
+  const scopes = ["user:email", "notifications"]
+  const authURL =
+    "https://github.com/login/oauth/authorize?client_id=" +
+    clientId +
+    "&scope=" +
+    scopes
+
+  let window: BrowserWindow | null = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: { nodeIntegration: false },
+  })
+  window.on("close", () => {
+    window = null
+  })
+
+  window.loadURL(authURL)
+  window.show()
+
+  window.webContents.on("will-redirect", (event, url) => {
+    const error = getErrorByUrl(url)
+    if (error) {
+      // TODO: handle error
+      console.error(error)
+      return
+    }
+    const code = getCodeByUrl(url)
+    if (!code) {
+      // TODO: handle error
+      console.error("No code! What's happen?")
+      return
+    }
+
+    return requestGithubToken(clientId, clientSecret, code)
+      .then(res => res.json())
+      .then(json => {
+        // TODO: is it true?
+        const accessToken = json.access_token as string
+        return accessToken
+      })
+      .finally(() => {
+        window && window.destroy()
+      })
+  })
+}
+
+function getErrorByUrl(url: string) {
+  const error = /\?error=(.+)$/.exec(url)
+  return error
+}
+function getCodeByUrl(url: string) {
+  const raw_code = /code=([^&]*)/.exec(url) || null
+  const code = raw_code && raw_code.length > 1 ? raw_code[1] : null
+  return code
+}
+
+function requestGithubToken(
+  clientId: string,
+  clientSecret: string,
+  code: string,
+) {
+  return fetch("https://github.com/login/oauth/access_token", {
+    method: "post",
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: code,
+    }),
+    headers: { "Content-Type": "application/json" },
+  })
+}
